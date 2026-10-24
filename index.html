@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.5.2/ol.css">
+<script src="https://cdn.jsdelivr.net/npm/ol@v7.5.2/dist/ol.js"></script>
+<title>서울·경기 카페 점포 현황 | V-World 지도</title>
+<style>
+* { box-sizing:border-box; }
+:root { --ink:#172d42; --muted:#6c8090; --line:#dfe8ee; --accent:#067e82; --bg:#f4f8fb; }
+body { margin:0; color:var(--ink); background:var(--bg); font-family:'Malgun Gothic','Apple SD Gothic Neo',system-ui,sans-serif; }
+.app { display:grid; grid-template-columns:355px minmax(0,1fr); min-height:600px; height:100vh; }
+.sidebar { background:#fff; overflow-y:auto; z-index:2; padding:23px 21px; box-shadow:4px 0 24px #142d4211; }
+.eyebrow { color:var(--accent); font-size:11px; font-weight:800; letter-spacing:.1em; }
+h1 { font-size:25px; margin:7px 0 8px; line-height:1.3; letter-spacing:-1px; }
+.lede { font-size:12px; line-height:1.7; margin:0 0 15px; color:var(--muted); }
+.notice { font-size:12px; line-height:1.6; background:#fff8e7; border:1px solid #f3ddb0; border-radius:10px; padding:11px; color:#775916; }
+.setup { border:1px solid #b8dee0; background:#f1fbfb; border-radius:13px; padding:14px; margin-top:16px; }
+.setup h2 { margin:0 0 8px; font-size:14px; }
+.setup p { font-size:11px; line-height:1.65; color:#4b6f77; margin:8px 0; }
+.setup .sub { font-size:11px; color:#517884; }
+.control { margin-top:16px; }
+label { display:block; font-size:12px; font-weight:700; margin-bottom:7px; }
+input[type=text],input[type=password],select { width:100%; border:1px solid #d3e2e7; background:#fff; padding:11px; border-radius:9px; color:var(--ink); font:inherit; font-size:13px; }
+button,.filelabel { cursor:pointer; border:0; border-radius:9px; background:var(--accent); padding:10px 12px; color:#fff; font:inherit; font-size:12px; font-weight:700; }
+button:hover,.filelabel:hover { filter:brightness(.95); }
+button.secondary,.filelabel.secondary { border:1px solid #bdcfd9; color:#24576c; background:#fff; }
+button:disabled { opacity:.55; cursor:default; }
+.setup button { margin-top:8px; width:100%; }
+.twocol { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:16px; }
+.stat { background:var(--bg); border-radius:10px; padding:12px 10px; }
+.stat small { font-size:11px; color:var(--muted); display:block; margin-bottom:6px; }
+.stat strong { font-size:22px; }
+.stat em { font-size:11px; font-style:normal; color:var(--muted); }
+.section-head { display:flex; align-items:center; justify-content:space-between; margin:20px 0 9px; }
+.section-head h2 { font-size:14px; margin:0; }
+#results { display:grid; gap:7px; }
+.result { background:#fff; width:100%; display:flex; justify-content:space-between; align-items:center; border:1px solid var(--line); color:var(--ink); text-align:left; gap:7px; padding:10px 11px; }
+.result:hover { border-color:#6faeaa; }
+.result .name { display:block; font-size:13px; font-weight:800; }
+.result .region { display:block; font-size:11px; font-weight:400; color:var(--muted); margin-top:3px; }
+.result .value { white-space:nowrap; color:#087a7e; font-weight:800; }
+.hint { font-size:11px; color:var(--muted); margin:8px 0; line-height:1.6; overflow-wrap:anywhere; }
+.fileactions { display:flex; flex-wrap:wrap; gap:7px; }
+input[type=file] { display:none; }
+#status { color:#087a7e; font-size:12px; line-height:1.6; min-height:17px; margin-top:10px; overflow-wrap:anywhere; }
+#status.error { color:#a72b2b; }
+.map-frame { position:relative; min-height:500px; overflow:hidden; }
+#map { width:100%; height:100%; background:linear-gradient(135deg,#ebf4f6,#dbe8ec); }
+.map-status { position:absolute; z-index:3; inset:0; display:flex; align-items:center; justify-content:center; padding:25px; background:#f0f6f9; }
+.map-status.hidden { display:none; }
+.map-status .panel { max-width:450px; border:1px solid #d7e5eb; background:#fff; border-radius:18px; padding:29px 26px; text-align:center; box-shadow:0 14px 35px #2e52621a; }
+.map-status .panel .symbol { font-size:42px; }
+.map-status .panel h2 { margin:12px 0 7px; font-size:21px; }
+.map-status .panel p { color:var(--muted); font-size:13px; line-height:1.8; margin:0; }
+.map-note { position:absolute; top:15px; left:15px; z-index:1; pointer-events:none; background:#fff8e8ee; border:1px solid #f2d79d; color:#865e18; padding:10px 13px; border-radius:9px; font-size:12px; font-weight:800; }
+.legend { position:absolute; bottom:23px; right:18px; z-index:1; pointer-events:none; padding:12px; background:#fff; border:1px solid var(--line); border-radius:11px; box-shadow:0 6px 20px #123c4717; min-width:166px; }
+.legend strong { font-size:12px; }
+.scale { display:flex; height:9px; margin:10px 0 6px; overflow:hidden; border-radius:6px; }
+.scale span { flex:1; }
+.legend-line { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); }
+.legend p { margin:9px 0 0; font-size:10px; color:var(--muted); }
+.cafe-circle { border:2px solid #fff; border-radius:50%; box-shadow:0 4px 14px #0a303c4d; color:#173243; font-weight:900; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:11px; transition:transform .15s ease; white-space:nowrap; }
+.cafe-circle:hover { transform:scale(1.12); }
+.detail { padding:3px 5px; min-width:170px; font:13px/1.75 'Malgun Gothic',sans-serif; }
+.ol-popup-custom { background:#fff; border:1px solid #cfe1e8; border-radius:11px; padding:11px; box-shadow:0 5px 20px #0c283a33; position:relative; transform:translate(-50%,-115%); min-width:205px; }
+.ol-popup-custom::after {content:'';position:absolute;bottom:-8px;left:calc(50% - 7px);width:12px;height:12px;background:#fff;border-right:1px solid #cfe1e8;border-bottom:1px solid #cfe1e8;transform:rotate(45deg);}
+.ol-popup-close {position:absolute;right:6px;top:5px;background:#eaf3f5;color:#284858;padding:2px 7px;font-size:14px;border-radius:7px;}
+.ol-control button {background:rgba(255,255,255,.92)!important;color:#233f52!important;border:1px solid #b7cbd6!important;}
+
+.detail b { font-size:16px; }
+@media(max-width:780px) { .app { display:flex; flex-direction:column; height:auto; } .sidebar { max-height:none; padding:19px; } .map-frame { height:65vh; min-height:420px; } .legend { right:10px; bottom:12px; } }
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="eyebrow">V-WORLD · CAFE ANALYTICS</div>
+  <h1>서울·경기<br>카페 점포 현황</h1>
+  <p class="lede">국토교통부 브이월드 배경지도에서 카페 수, 인구 대비 점포 수, 상업지역 밀집도를 확인합니다.</p>
+  <div class="notice" id="dataNotice"><b>예시용 가상 데이터</b>입니다. 실제 카페 통계가 아니며 CSV를 불러오면 교체됩니다.</div>
+  <div class="setup">
+    <h2>1. 브이월드 지도 연결</h2>
+    <p><a href="https://www.vworld.kr/" target="_blank" rel="noopener noreferrer">브이월드</a>에 가입한 후 <b>오픈API → 인증키 발급</b>에서 발급받은 키를 입력하세요. 개발 URL을 <code>http://localhost:8080</code>으로 등록하고 해당 주소로 실행하세요.</p>
+    <label for="apiKey">브이월드 API 인증키</label>
+    <input id="apiKey" type="text" spellcheck="false" autocomplete="off" placeholder="브이월드 인증키 붙여넣기">
+    <button id="connectBtn" type="button">브이월드 지도 불러오기</button>
+    <p class="sub">키는 현재 화면에서만 사용하고 따로 저장하지 않습니다. 배포용 HTML에는 키가 노출되므로 발급한 키의 허용 URL을 관리하세요.</p>
+  </div>
+  <div class="control">
+    <label for="cityFilter">2. 분석 지역</label>
+    <select id="cityFilter"><option value="전체">서울·경기 전체</option><option value="서울">서울특별시</option><option value="경기">경기도</option></select>
+  </div>
+  <div class="control">
+    <label for="metricSelect">3. 표시 기준</label>
+    <select id="metricSelect"><option value="count">카페 점포 수</option><option value="per10k">인구 1만 명당 카페 수</option><option value="perCommercial">상업지역 1km²당 카페 수</option></select>
+  </div>
+  <div class="twocol">
+    <div class="stat"><small>선택 지역 카페 수 합계</small><strong id="totalCafes">-</strong><em> 개</em></div>
+    <div class="stat"><small>인구 1만 명당 카페 수</small><strong id="totalPer10k">-</strong><em> 개</em></div>
+  </div>
+  <div class="section-head"><h2>지역별 현황</h2><span class="hint" id="areaCount">-</span></div>
+  <div id="results"></div>
+  <div class="control">
+    <label>4. 내 데이터 가져오기</label>
+    <div class="fileactions">
+      <label class="filelabel" for="csvInput">카페 통계 CSV 열기</label>
+      <input id="csvInput" type="file" accept=".csv,text/csv">
+      <button class="secondary" id="sampleCsv" type="button">CSV 예시 저장</button>
+    </div>
+    <p class="hint">CSV 열: <code>area,city,lat,lng,cafe_count,population,commercial_km2</code><br>지역별 집계 데이터를 사용하며 위치는 해당 지역의 대표 좌표입니다.</p>
+    <div class="fileactions" style="margin-top:9px">
+      <label class="filelabel secondary" for="geoInput">시군구 경계 GeoJSON 열기</label>
+      <input id="geoInput" type="file" accept=".geojson,.json,application/geo+json,application/json">
+    </div>
+    <p class="hint">선택사항: <b>EPSG:4326 (경도·위도)</b> GeoJSON에 <code>SIG_KOR_NM</code> 또는 <code>area</code> 속성이 있으면 행정구역 색상을 표시합니다. SHP/ZIP 파일은 바로 불러올 수 없습니다.</p>
+    <div id="status" role="status" aria-live="polite"></div>
+  </div>
+</aside>
+<main class="map-frame">
+  <div id="map"></div>
+  <div class="map-status" id="mapStatus"><div class="panel"><div class="symbol">🗺️</div><h2 id="mapStatusTitle">브이월드 지도 연결 대기 중</h2><p id="mapStatusText">왼쪽에 JavaScript 키를 입력한 뒤<br>‘브이월드 지도 불러오기’를 선택하세요.<br>지도 연결 전에도 예시 통계는 확인할 수 있습니다.</p></div></div>
+  <div class="map-note" id="mapNote">예시 데이터 · 실제 점포 수 아님</div>
+  <div class="legend"><strong id="legendTitle">카페 점포 수</strong><div class="scale"><span style="background:#d0e7de"></span><span style="background:#91cdbb"></span><span style="background:#f1d18e"></span><span style="background:#eca06e"></span><span style="background:#d85448"></span></div><div class="legend-line"><span>적음</span><span id="legendMax">많음</span></div><p>원 크기·색상은 선택한 지표 기준</p></div>
+</main>
+</div>
+<script>
+'use strict';
+// 선택사항: 개발 중에만 아래 따옴표 안에 본인의 V-World 키를 입력할 수 있습니다.
+// 배포하는 웹페이지에서는 이 키가 공개되므로 반드시 허용 도메인을 적절히 관리하세요.
+const VWORLD_API_KEY = '';
+const sampleData = [
+  {area:'강남구',city:'서울',lat:37.5172,lng:127.0473,cafe_count:1250,population:520000,commercial_km2:9.3},
+  {area:'마포구',city:'서울',lat:37.5663,lng:126.9014,cafe_count:980,population:370000,commercial_km2:4.2},
+  {area:'성동구',city:'서울',lat:37.5634,lng:127.0369,cafe_count:720,population:280000,commercial_km2:3.0},
+  {area:'종로구',city:'서울',lat:37.5735,lng:126.9790,cafe_count:790,population:140000,commercial_km2:5.1},
+  {area:'송파구',city:'서울',lat:37.5145,lng:127.1059,cafe_count:1050,population:650000,commercial_km2:7.2},
+  {area:'수원시',city:'경기',lat:37.2636,lng:127.0286,cafe_count:1400,population:1200000,commercial_km2:12.1},
+  {area:'성남시',city:'경기',lat:37.4201,lng:127.1267,cafe_count:1520,population:910000,commercial_km2:11.0},
+  {area:'고양시',city:'경기',lat:37.6584,lng:126.8320,cafe_count:1080,population:1050000,commercial_km2:9.6},
+  {area:'용인시',city:'경기',lat:37.2411,lng:127.1776,cafe_count:1050,population:1090000,commercial_km2:10.5},
+  {area:'안양시',city:'경기',lat:37.3943,lng:126.9568,cafe_count:690,population:540000,commercial_km2:5.6}
+];
+let data=sampleData.slice(), map=null, pointsLayer=null, polygonsLayer=null, popupOverlay=null, popupElement=null, geoFeatures=null;
+let connected=false, connecting=false, loadedRealCsv=false;
+const $=id=>document.getElementById(id);
+const formatter=new Intl.NumberFormat('ko-KR',{maximumFractionDigits:1});
+const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const metrics={count:'카페 점포 수',per10k:'인구 1만 명당 카페 수',perCommercial:'상업지역 1km²당 카페 수'};
+function metric(d){
+  switch($('metricSelect').value){
+    case 'per10k':return d.population>0?d.cafe_count*10000/d.population:null;
+    case 'perCommercial':return d.commercial_km2>0?d.cafe_count/d.commercial_km2:null;
+    default:return d.cafe_count;
+  }
+}
+function num(n){return n==null||!Number.isFinite(n)?'자료 없음':formatter.format(n);}
+function color(n,max){if(n==null)return '#b6c6cc';const v=n/Math.max(max,1);return v<.2?'#d0e7de':v<.4?'#91cdbb':v<.6?'#f1d18e':v<.8?'#eca06e':'#d85448';}
+function detail(d){return `<div class="detail"><b>${escapeHtml(d.area)}</b> <span style="color:#71828e;font-size:11px">${escapeHtml(d.city)}</span><hr style="border:0;border-top:1px solid #e7edf0">카페 점포 수: <b>${num(d.cafe_count)}개</b><br>인구 1만 명당: ${num(d.population>0?d.cafe_count*10000/d.population:null)}개<br>상업지역 1km²당: ${num(d.commercial_km2>0?d.cafe_count/d.commercial_km2:null)}개</div>`;}
+function rows(){return data.filter(d=>$('cityFilter').value==='전체'||d.city===$('cityFilter').value);}
+function status(msg,isError=false){$('status').textContent=msg;$('status').classList.toggle('error',isError);}
+function mapMessage(title,desc){$('mapStatus').classList.remove('hidden');$('mapStatusTitle').textContent=title;$('mapStatusText').textContent=desc;}
+function openDetail(d){
+  if(!map || !popupOverlay) return;
+  popupElement.innerHTML='<button type="button" class="ol-popup-close" aria-label="닫기">×</button>'+detail(d);
+  popupElement.querySelector('.ol-popup-close').onclick=()=>popupOverlay.setPosition(undefined);
+  popupOverlay.setPosition(ol.proj.fromLonLat([d.lng,d.lat]));
+}
+function clearMap(){
+  if(popupOverlay) popupOverlay.setPosition(undefined);
+  if(pointsLayer) pointsLayer.getSource().clear();
+  if(polygonsLayer) polygonsLayer.getSource().clear();
+}
+function paintGeo(shown,max){
+  if(!geoFeatures || !polygonsLayer) return;
+  const lookup=new Map(shown.map(d=>[d.area,d]));
+  const collection={type:'FeatureCollection',features:geoFeatures};
+  let features;
+  try {
+    features=new ol.format.GeoJSON().readFeatures(collection,{dataProjection:'EPSG:4326',featureProjection:'EPSG:3857'});
+  }catch(e){status('GeoJSON 변환 오류: '+e.message,true);return;}
+  features.forEach(f=>{
+    const name=f.get('SIG_KOR_NM')||f.get('area')||f.get('name');
+    const d=lookup.get(name);
+    if(!d)return;
+    f.set('cafe_data',d);
+    const v=metric(d);
+    f.setStyle(new ol.style.Style({
+      fill:new ol.style.Fill({color:hexRGBA(color(v,max),.33)}),
+      stroke:new ol.style.Stroke({color:'#5e7d8c',width:1.2})
+    }));
+    polygonsLayer.getSource().addFeature(f);
+  });
+}
+function hexRGBA(hex,alpha){
+  const h=hex.replace('#','');
+  return `rgba(${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)},${alpha})`;
+}
+function drawMap(shown,max){
+  if(!map||!connected)return;
+  clearMap();
+  paintGeo(shown,max);
+  shown.forEach(d=>{
+    const v=metric(d);
+    const radius=v==null?13:Math.max(15,Math.min(32,13+19*Math.sqrt(v/Math.max(1,max))));
+    const text=v==null?'–':num(v);
+    const feature=new ol.Feature({geometry:new ol.geom.Point(ol.proj.fromLonLat([d.lng,d.lat]))});
+    feature.set('cafe_data',d);
+    feature.setStyle(new ol.style.Style({
+      image:new ol.style.Circle({
+        radius, fill:new ol.style.Fill({color:color(v,max)}),
+        stroke:new ol.style.Stroke({color:'#ffffff',width:2.2})
+      }),
+      text:new ol.style.Text({
+        text, font:'bold 11px sans-serif',
+        fill:new ol.style.Fill({color:'#1d3547'}),
+        stroke:new ol.style.Stroke({color:'rgba(255,255,255,.85)',width:2})
+      })
+    }));
+    pointsLayer.getSource().addFeature(feature);
+  });
+  if(shown.length){
+    const positions=shown.map(d=>ol.proj.fromLonLat([d.lng,d.lat]));
+    if(shown.length===1){map.getView().animate({center:positions[0],zoom:11,duration:350});}
+    else map.getView().fit(ol.extent.boundingExtent(positions),{
+      size:map.getSize(),padding:[65,65,65,65],maxZoom:12,duration:350
+    });
+  }
+}
+function render(){
+  const shown=rows();
+  const vals=shown.map(metric).filter(x=>x!=null&&Number.isFinite(x));
+  const max=Math.max(1,...vals);
+  const total=shown.reduce((n,d)=>n+d.cafe_count,0);
+  const population=shown.reduce((n,d)=>n+(d.population>0?d.population:0),0);
+  const comparableCafes=shown.reduce((n,d)=>n+(d.population>0?d.cafe_count:0),0);
+  $('totalCafes').textContent=num(total);
+  $('totalPer10k').textContent=population>0?num(comparableCafes*10000/population):'–';
+  $('areaCount').textContent=`${shown.length}개 지역`;
+  $('legendTitle').textContent=metrics[$('metricSelect').value];
+  $('legendMax').textContent=vals.length?`${num(max)}개`:'자료 없음';
+  const results=$('results');results.replaceChildren();
+  [...shown].sort((a,b)=>(metric(b)??-1)-(metric(a)??-1)).forEach(d=>{
+    const btn=document.createElement('button');btn.className='result';btn.type='button';
+    const left=document.createElement('span');
+    left.innerHTML=`<span class="name">${escapeHtml(d.area)}</span><span class="region">${escapeHtml(d.city)}</span>`;
+    const right=document.createElement('span');right.className='value';right.textContent=num(metric(d))+(metric(d)==null?'':'개');
+    btn.append(left,right);btn.addEventListener('click',()=>{if(map){map.getView().animate({center:ol.proj.fromLonLat([d.lng,d.lat]),zoom:11,duration:350});openDetail(d);}else{status('먼저 브이월드 지도를 연결하세요.');}});
+    results.appendChild(btn);
+  });
+  if(!shown.length)results.textContent='선택한 지역의 데이터가 없습니다.';
+  drawMap(shown,max);
+}
+function connect(){
+  if(connecting)return;
+  const key=($('apiKey').value.trim()||VWORLD_API_KEY).trim();
+  if(!key){status('브이월드 API 인증키를 입력하세요.',true);return;}
+  if(!window.ol){
+    mapMessage('지도 라이브러리 로드 실패','OpenLayers JavaScript 라이브러리를 불러오지 못했습니다. 인터넷 및 CDN 접근을 확인하세요.');
+    status('OpenLayers CDN 접속에 실패했습니다. F12 → Console/Network에서 확인하세요.',true);return;
+  }
+  if(location.protocol==='file:'){
+    mapMessage('로컬 웹 서버에서 실행하세요','file://로 연 HTML은 인증키에 등록된 도메인과 일치하지 않을 수 있습니다. VS Code Live Server 또는 http://localhost:8080에서 실행하세요.');
+    status('file:// 로 직접 실행했습니다. 브이월드에 등록된 http://localhost:8080에서 실행해 주세요.',true);return;
+  }
+  if(connected){
+    mapMessage('새 지도 연결 중','입력한 인증키로 배경지도를 다시 불러옵니다.');
+    map.setTarget(null);map=null;connected=false;
+  }
+  connecting=true;
+  $('connectBtn').disabled=true;$('connectBtn').textContent='지도 연결 중…';
+  mapMessage('브이월드 지도 요청 중','배경지도 타일 응답을 확인하고 있습니다.');
+  status('브이월드 WMTS 배경지도를 불러오는 중입니다.');
+  try{
+    const tileSource=new ol.source.XYZ({
+      url:`https://api.vworld.kr/req/wmts/1.0.0/${encodeURIComponent(key)}/Base/{z}/{y}/{x}.png`,
+      attributions:'© <a href="https://www.vworld.kr/" target="_blank" rel="noopener">브이월드</a>',
+      crossOrigin:null,
+      maxZoom:19
+    });
+    pointsLayer=new ol.layer.Vector({source:new ol.source.Vector(),zIndex:20});
+    polygonsLayer=new ol.layer.Vector({source:new ol.source.Vector(),zIndex:10});
+    popupElement=document.createElement('div');popupElement.className='ol-popup-custom';
+    $('map').appendChild(popupElement);
+    popupOverlay=new ol.Overlay({element:popupElement,autoPan:{animation:{duration:220}}});
+    map=new ol.Map({
+      target:'map',layers:[new ol.layer.Tile({source:tileSource}),polygonsLayer,pointsLayer],
+      view:new ol.View({center:ol.proj.fromLonLat([127.05,37.55]),zoom:9,minZoom:6,maxZoom:19}),
+      overlays:[popupOverlay]
+    });
+    map.on('singleclick',event=>{
+      const feature=map.forEachFeatureAtPixel(event.pixel,f=>f);
+      if(feature){const d=feature.get('cafe_data');if(d)openDetail(d);}
+      else popupOverlay.setPosition(undefined);
+    });
+    map.on('pointermove',event=>{
+      const f=map.forEachFeatureAtPixel(event.pixel,x=>x);
+      map.getTargetElement().style.cursor=f&&f.get('cafe_data')?'pointer':'';
+    });
+    let successes=0,failures=0,finished=false;
+    const finish=(ok,message)=>{
+      if(finished)return;finished=true;connecting=false;
+      $('connectBtn').disabled=false;$('connectBtn').textContent=ok?'지도 다시 연결':'다시 시도';
+      if(ok){$('mapStatus').classList.add('hidden');status(message);}
+      else{mapMessage('브이월드 타일을 불러오지 못했습니다',message);status(message,true);}
+    };
+    tileSource.on('tileloadend',()=>{successes++;if(successes===1)finish(true,'브이월드 배경지도 연결 성공. 카페 분석 데이터를 표시합니다.');});
+    tileSource.on('tileloaderror',()=>{failures++;if(!successes&&failures>=4)finish(false,'타일 요청이 거부되었습니다. 인증키 상태, 허용 URL 및 요청 제한을 확인하세요. F12 → Network에 403/404 오류가 있는지 확인할 수 있습니다.');});
+    connected=true;
+    render();
+    setTimeout(()=>{if(!finished)finish(false,'지도 응답을 확인하지 못했습니다. 브이월드 인증키, 등록 도메인, 인터넷/CDN 연결을 확인하세요.');},15000);
+  }catch(e){
+    connecting=false;connected=false;$('connectBtn').disabled=false;$('connectBtn').textContent='지도 다시 시도';
+    mapMessage('지도 생성 실패',e.message);status('지도 생성 오류: '+e.message,true);
+  }
+}
+function parseCSV(text){
+  const rs=[];let row=[],cell='',quote=false;
+  text=text.replace(/^\uFEFF/,'');
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(c==='"'){if(quote&&text[i+1]==='"'){cell+='"';i++;}else quote=!quote;}
+    else if(c===','&&!quote){row.push(cell);cell='';}
+    else if((c==='\r'||c==='\n')&&!quote){if(c==='\r'&&text[i+1]==='\n')i++;row.push(cell);if(row.some(v=>v.trim()))rs.push(row);row=[];cell='';}
+    else cell+=c;
+  }
+  row.push(cell);if(row.some(v=>v.trim()))rs.push(row);
+  if(!rs.length)return [];
+  const head=rs.shift().map(c=>c.trim().toLowerCase());
+  return rs.map(values=>Object.fromEntries(head.map((h,i)=>[h,(values[i]||'').trim()])));
+}
+$('csvInput').addEventListener('change',async e=>{
+  const file=e.target.files?.[0];if(!file)return;
+  try{
+    const raw=parseCSV(await file.text());
+    const required=['area','city','lat','lng','cafe_count'];
+    if(!raw.length||required.some(k=>!(k in raw[0])))throw new Error('CSV 열을 확인하세요: '+required.join(', '));
+    const convert=raw.map(d=>({area:d.area,city:d.city==='서울특별시'?'서울':d.city==='경기도'?'경기':d.city,lat:Number(d.lat),lng:Number(d.lng),cafe_count:Number(d.cafe_count),population:d.population?Number(d.population):null,commercial_km2:d.commercial_km2?Number(d.commercial_km2):null})).filter(d=>d.area&&['서울','경기'].includes(d.city)&&Number.isFinite(d.lat)&&d.lat>=33&&d.lat<=40&&Number.isFinite(d.lng)&&d.lng>=124&&d.lng<=132&&Number.isFinite(d.cafe_count)&&d.cafe_count>=0);
+    if(!convert.length)throw new Error('유효한 서울·경기 지역 데이터가 없습니다.');
+    data=convert;loadedRealCsv=true;$('cityFilter').value='전체';
+    $('dataNotice').innerHTML='<b>CSV에서 가져온 데이터</b>입니다. 통계 출처와 기준 시점은 원본에서 확인하세요.';
+    $('mapNote').textContent='CSV 데이터 · 출처/기준 시점 확인 필요';
+    render();status(`${file.name}: ${convert.length}개 행을 읽었습니다.`);
+  }catch(err){status('CSV 오류: '+err.message,true);}
+  e.target.value='';
+});
+$('geoInput').addEventListener('change',async e=>{
+  const file=e.target.files?.[0];if(!file)return;
+  try{
+    const json=JSON.parse(await file.text());
+    const features=json.type==='FeatureCollection'?json.features:json.type==='Feature'?[json]:null;
+    if(!features||!features.length)throw new Error('FeatureCollection/Feature GeoJSON 파일이 아닙니다.');
+    if(features.length>1000)throw new Error('행정구역 1000개 이하의 GeoJSON을 사용해 주세요.');
+    let p=null;
+    for(const f of features){const g=f.geometry;if(!g)continue;const outer=g.type==='Polygon'?g.coordinates?.[0]:g.type==='MultiPolygon'?g.coordinates?.[0]?.[0]:null;if(outer?.length){p=outer[0];break;}}
+    if(!p||!Array.isArray(p)||p.length<2||p[0]<124||p[0]>132||p[1]<33||p[1]>40)throw new Error('EPSG:4326 좌표(경도,위도) 파일인지 확인해 주세요.');
+    geoFeatures=features;render();status(`${file.name}: ${features.length}개 행정구역 경계를 읽었습니다.`);
+  }catch(err){status('GeoJSON 오류: '+err.message,true);}
+  e.target.value='';
+});
+$('sampleCsv').addEventListener('click',()=>{
+  const cols=['area','city','lat','lng','cafe_count','population','commercial_km2'];
+  const csv=[cols.join(','),...sampleData.map(d=>cols.map(k=>d[k]).join(','))].join('\r\n');
+  const u=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+  const a=document.createElement('a');a.href=u;a.download='cafe_sample_FAKE_data.csv';a.click();setTimeout(()=>URL.revokeObjectURL(u),2000);
+});
+$('connectBtn').addEventListener('click',connect);
+$('apiKey').addEventListener('keydown',e=>{if(e.key==='Enter')connect();});
+$('cityFilter').addEventListener('change',render);
+$('metricSelect').addEventListener('change',render);
+if(VWORLD_API_KEY)$('apiKey').value=VWORLD_API_KEY;
+if(location.protocol==='file:')status('파일 직접 실행(file://) 상태입니다. 인증키 등록 URL과 일치하도록 localhost 웹 서버로 실행하세요.',true);
+render();
+</script>
+</body>
+</html>
