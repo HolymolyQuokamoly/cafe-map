@@ -1,12 +1,4 @@
-<!doctype html>
-<html lang="ko">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.5.2/ol.css">
-<script src="https://cdn.jsdelivr.net/npm/ol@v7.5.2/dist/ol.js"></script>
-<title>서울·경기 카페 점포 현황 | V-World 지도</title>
-<style>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>서울·경기 실제 카페 점포 현황 | V-World</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.5.2/ol.css"><script src="https://cdn.jsdelivr.net/npm/ol@v7.5.2/dist/ol.js"></script><style>
 * { box-sizing:border-box; }
 :root { --ink:#172d42; --muted:#6c8090; --line:#dfe8ee; --accent:#067e82; --bg:#f4f8fb; }
 body { margin:0; color:var(--ink); background:var(--bg); font-family:'Malgun Gothic','Apple SD Gothic Neo',system-ui,sans-serif; }
@@ -71,313 +63,250 @@ input[type=file] { display:none; }
 
 .detail b { font-size:16px; }
 @media(max-width:780px) { .app { display:flex; flex-direction:column; height:auto; } .sidebar { max-height:none; padding:19px; } .map-frame { height:65vh; min-height:420px; } .legend { right:10px; bottom:12px; } }
-</style>
-</head>
-<body>
-<div class="app">
+
+
+.stats-grid { display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:15px; }
+.cardstat {border:1px solid #e5edf0;border-radius:12px;background:#f4f8fb;padding:11px;min-width:0;}
+.cardstat small {display:block;font-size:11px;color:#6c8090;margin-bottom:6px;line-height:1.5;}
+.cardstat strong {font-size:21px;font-weight:800;}
+.cardstat span {font-size:11px;color:#6c8090;}
+.checkline {display:flex;align-items:flex-start;gap:8px;margin:10px 0;font-size:12px;line-height:1.6;cursor:pointer;font-weight:600;}
+.checkline input{margin-top:4px;accent-color:#087e82;}
+.checkline.disabled{color:#6c8090;}
+.footnote{font-size:11px;line-height:1.7;color:#617688;}
+.footnote a{color:#087e82;}
+.result.missing .value{color:#9aa8b3;}
+.dataok {color:#146345;background:#e8f7ee;border:1px solid #bce4cc;}
+.map-note{max-width:72vw;background:#ffffffeb;border:1px solid #dae7ec;color:#355b6a;}
+.setup[hidden]{display:none!important;}
+.zoomhint{margin:8px 0 2px;font-size:11px;color:#68808a;line-height:1.6;}
+@media(max-width:780px){.map-note{max-width:70vw;font-size:10px;}.sidebar{max-height:none}}
+</style></head><body><div class="app">
 <aside class="sidebar">
-  <div class="eyebrow">V-WORLD · CAFE ANALYTICS</div>
+  <div class="eyebrow">V-WORLD · REAL CAFE DATA</div>
   <h1>서울·경기<br>카페 점포 현황</h1>
-  <p class="lede">국토교통부 브이월드 배경지도에서 카페 수, 인구 대비 점포 수, 상업지역 밀집도를 확인합니다.</p>
-  <div class="notice" id="dataNotice"><b>예시용 가상 데이터</b>입니다. 실제 카페 통계가 아니며 CSV를 불러오면 교체됩니다.</div>
-  <div class="setup" style="display:none;">
-    <h2>1. 브이월드 지도 연결</h2>
-    <p><a href="https://www.vworld.kr/" target="_blank" rel="noopener noreferrer">브이월드</a>에 가입한 후 <b>오픈API → 인증키 발급</b>에서 발급받은 키를 입력하세요. 개발 URL을 <code>http://localhost:8080</code>으로 등록하고 해당 주소로 실행하세요.</p>
+  <p class="lede">2026년 6월 실제 상가정보 · 56개 시군구 · 서울 상업지역 실측 분석</p>
+  <div class="notice" id="dataNotice">검증된 카페 분석 자료를 자동으로 불러오는 중입니다.</div>
+  <div class="setup" id="setup">
+    <h2>브이월드 지도 연결 설정</h2>
+    <p>배포할 때 <code>VWORLD_API_KEY</code>에 인증키를 입력하면 방문자는 별도 입력 없이 지도에 접속합니다. 이 입력창은 인증키가 없는 경우에만 보입니다.</p>
     <label for="apiKey">브이월드 API 인증키</label>
-    <input id="apiKey" type="text" spellcheck="false" autocomplete="off" placeholder="브이월드 인증키 붙여넣기">
-    <button id="connectBtn" type="button">브이월드 지도 불러오기</button>
-    <p class="sub">키는 현재 화면에서만 사용하고 따로 저장하지 않습니다. 배포용 HTML에는 키가 노출되므로 발급한 키의 허용 URL을 관리하세요.</p>
+    <input id="apiKey" type="password" spellcheck="false" autocomplete="off" placeholder="브이월드 API 키">
+    <button id="connectBtn" type="button">지도 연결</button>
+  </div>
+  <div class="control"><label for="cityFilter">분석 지역</label>
+    <select id="cityFilter"><option value="전체">서울·경기 전체 (56개 지역)</option><option value="서울">서울특별시 (25개 구)</option><option value="경기">경기도 (31개 시군)</option></select>
+  </div>
+  <div class="control"><label for="metricSelect">지역별 표시 지표</label>
+    <select id="metricSelect">
+      <option value="count">카페 점포 수 (개)</option>
+      <option value="adminDensity">행정면적 1㎢당 카페 수</option>
+      <option value="brandShare">식별된 48개 브랜드 비중 (%)</option>
+      <option value="commercialDensity">실제 상업지역 내 카페 밀도 (서울)</option>
+      <option value="commercialCount">실제 상업지역 내 카페 수 (서울)</option>
+    </select>
+  </div>
+  <div class="stats-grid">
+    <div class="cardstat"><small>전체 카페 점포</small><strong id="totalCafes">—</strong><span> 개</span></div>
+    <div class="cardstat"><small>식별 48개 브랜드</small><strong id="totalBrands">—</strong><span> 개</span></div>
+    <div class="cardstat"><small>실제 상업지역 내 카페<br>(서울 25구만 검증)</small><strong id="totalCommercial">—</strong><span> 개</span></div>
+    <div class="cardstat"><small>상업지역 카페 밀도<br>(서울 검증분)</small><strong id="totalCommercialDensity">—</strong><span> 개/㎢</span></div>
   </div>
   <div class="control">
-    <label for="cityFilter">2. 분석 지역</label>
-    <select id="cityFilter"><option value="전체">서울·경기 전체</option><option value="서울">서울특별시</option><option value="경기">경기도</option></select>
+    <label>지도 레이어</label>
+    <label class="checkline"><input id="showShops" type="checkbox"> 개별 카페 위치 표시 <span style="font-weight:400;color:#7a8d98">(12레벨 이상 확대 시)</span></label>
+    <label class="checkline"><input id="showCommercial" type="checkbox"> 서울 상업지역 경계 표시 <span style="font-weight:400;color:#7a8d98">(2026.9)</span></label>
+    <div class="zoomhint" id="layerHint">지도에서 지역 원을 클릭하면 세부 통계가 나타납니다.</div>
   </div>
-  <div class="control">
-    <label for="metricSelect">3. 표시 기준</label>
-    <select id="metricSelect"><option value="count">카페 점포 수</option><option value="per10k">인구 1만 명당 카페 수</option><option value="perCommercial">상업지역 1km²당 카페 수</option></select>
-  </div>
-  <div class="twocol">
-    <div class="stat"><small>선택 지역 카페 수 합계</small><strong id="totalCafes">-</strong><em> 개</em></div>
-    <div class="stat"><small>인구 1만 명당 카페 수</small><strong id="totalPer10k">-</strong><em> 개</em></div>
-  </div>
-  <div class="section-head"><h2>지역별 현황</h2><span class="hint" id="areaCount">-</span></div>
+  <div class="section-head"><h2>지역별 현황</h2><span class="hint" id="areaCount">—</span></div>
   <div id="results"></div>
   <div class="control">
-    <label>4. 내 데이터 가져오기</label>
-    <div class="fileactions">
-      <label class="filelabel" for="csvInput">카페 통계 CSV 열기</label>
-      <input id="csvInput" type="file" accept=".csv,text/csv">
-      <button class="secondary" id="sampleCsv" type="button">CSV 예시 저장</button>
-    </div>
-    <p class="hint">CSV 열: <code>area,city,lat,lng,cafe_count,population,commercial_km2</code><br>지역별 집계 데이터를 사용하며 위치는 해당 지역의 대표 좌표입니다.</p>
-    <div class="fileactions" style="margin-top:9px">
-      <label class="filelabel secondary" for="geoInput">시군구 경계 GeoJSON 열기</label>
-      <input id="geoInput" type="file" accept=".geojson,.json,application/geo+json,application/json">
-    </div>
-    <p class="hint">선택사항: <b>EPSG:4326 (경도·위도)</b> GeoJSON에 <code>SIG_KOR_NM</code> 또는 <code>area</code> 속성이 있으면 행정구역 색상을 표시합니다. SHP/ZIP 파일은 바로 불러올 수 없습니다.</p>
+    <p class="footnote"><b>자료 출처</b><br>소상공인시장진흥공단 상가(상권)정보 2026.06 · 업종 I21201(카페).<br>서울 상업지역 점포 공간조인: 카페 2026.06 + 서울 용도지역 경계 2026.09, 상업지역 면적은 LX 2025.12 기준.<br>경기 상업지역 <b>내</b> 점포 수는 아직 미검증이므로 지표에서 제외.<br>식별 48개 브랜드는 상호명 기준이며 공식 전체 가맹점 수가 아닙니다.<br>인구 대비 지표는 동일 기준의 검증 인구자료가 없어 이번 버전에서 제외했습니다.</p>
+    <p class="footnote"><a target="_blank" rel="noopener noreferrer" href="https://www.data.go.kr/data/15083033/fileData.do">카페 원자료</a> · <a target="_blank" rel="noopener noreferrer" href="https://www.data.go.kr/data/15101219/fileData.do">상업지역 면적자료</a> · <a target="_blank" rel="noopener noreferrer" href="https://data.seoul.go.kr/dataList/OA-21136/S/1/datasetView.do">서울 용도지역</a></p>
     <div id="status" role="status" aria-live="polite"></div>
   </div>
 </aside>
 <main class="map-frame">
-  <div id="map"></div>
-  <div class="map-status" id="mapStatus"><div class="panel"><div class="symbol">🗺️</div><h2 id="mapStatusTitle">브이월드 지도 연결 대기 중</h2><p id="mapStatusText">왼쪽에 JavaScript 키를 입력한 뒤<br>‘브이월드 지도 불러오기’를 선택하세요.<br>지도 연결 전에도 예시 통계는 확인할 수 있습니다.</p></div></div>
-  <div class="map-note" id="mapNote">예시 데이터 · 실제 점포 수 아님</div>
-  <div class="legend"><strong id="legendTitle">카페 점포 수</strong><div class="scale"><span style="background:#d0e7de"></span><span style="background:#91cdbb"></span><span style="background:#f1d18e"></span><span style="background:#eca06e"></span><span style="background:#d85448"></span></div><div class="legend-line"><span>적음</span><span id="legendMax">많음</span></div><p>원 크기·색상은 선택한 지표 기준</p></div>
+ <div id="map"></div>
+ <div class="map-status" id="mapStatus"><div class="panel"><div class="symbol">🗺️</div><h2 id="mapStatusTitle">지도 연결 준비 중</h2><p id="mapStatusText">실제 분석 데이터를 불러오고 있습니다.</p></div></div>
+ <div class="map-note" id="mapNote">실제 카페 통계 · 2026년 6월 기준 · 인구지표 미포함</div>
+ <div class="legend"><strong id="legendTitle">카페 점포 수</strong><div class="scale"><span style="background:#d0e7de"></span><span style="background:#91cdbb"></span><span style="background:#f1d18e"></span><span style="background:#eca06e"></span><span style="background:#d85448"></span></div><div class="legend-line"><span>적음</span><span id="legendMax">많음</span></div><p>원 크기·색상은 선택한 지표 기준</p></div>
 </main>
 </div>
-<script>
-'use strict';
-// 선택사항: 개발 중에만 아래 따옴표 안에 본인의 V-World 키를 입력할 수 있습니다.
-// 배포하는 웹페이지에서는 이 키가 공개되므로 반드시 허용 도메인을 적절히 관리하세요.
-const VWORLD_API_KEY = '9C9A3095-E2E3-4E26-9C68-E1D9AF202F36';
-const sampleData = [
-  {area:'강남구',city:'서울',lat:37.5172,lng:127.0473,cafe_count:1250,population:520000,commercial_km2:9.3},
-  {area:'마포구',city:'서울',lat:37.5663,lng:126.9014,cafe_count:980,population:370000,commercial_km2:4.2},
-  {area:'성동구',city:'서울',lat:37.5634,lng:127.0369,cafe_count:720,population:280000,commercial_km2:3.0},
-  {area:'종로구',city:'서울',lat:37.5735,lng:126.9790,cafe_count:790,population:140000,commercial_km2:5.1},
-  {area:'송파구',city:'서울',lat:37.5145,lng:127.1059,cafe_count:1050,population:650000,commercial_km2:7.2},
-  {area:'수원시',city:'경기',lat:37.2636,lng:127.0286,cafe_count:1400,population:1200000,commercial_km2:12.1},
-  {area:'성남시',city:'경기',lat:37.4201,lng:127.1267,cafe_count:1520,population:910000,commercial_km2:11.0},
-  {area:'고양시',city:'경기',lat:37.6584,lng:126.8320,cafe_count:1080,population:1050000,commercial_km2:9.6},
-  {area:'용인시',city:'경기',lat:37.2411,lng:127.1776,cafe_count:1050,population:1090000,commercial_km2:10.5},
-  {area:'안양시',city:'경기',lat:37.3943,lng:126.9568,cafe_count:690,population:540000,commercial_km2:5.6}
-];
-let data=sampleData.slice(), map=null, pointsLayer=null, polygonsLayer=null, popupOverlay=null, popupElement=null, geoFeatures=null;
-let connected=false, connecting=false, loadedRealCsv=false;
+<script> 'use strict';
+// GitHub Pages 공개 배포 시 인증키를 작은따옴표 안에 입력하세요.
+// 공개 HTML에 입력한 키는 노출되므로 V-World의 서비스 URL 제한을 적용하세요.
+const VWORLD_API_KEY = '';
+let data=[],map=null,pointsLayer=null,zoneLayer=null,shopLayer=null,popupOverlay=null,popupElement=null;
+let connected=false,connecting=false,shopRefreshSeq=0;
+const pointCache={};
 const $=id=>document.getElementById(id);
-const formatter=new Intl.NumberFormat('ko-KR',{maximumFractionDigits:1});
-const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const metrics={count:'카페 점포 수',per10k:'인구 1만 명당 카페 수',perCommercial:'상업지역 1km²당 카페 수'};
-function metric(d){
-  switch($('metricSelect').value){
-    case 'per10k':return d.population>0?d.cafe_count*10000/d.population:null;
-    case 'perCommercial':return d.commercial_km2>0?d.cafe_count/d.commercial_km2:null;
-    default:return d.cafe_count;
-  }
+const fmt=new Intl.NumberFormat('ko-KR',{maximumFractionDigits:1});
+const metricLabels={count:'카페 점포 수',adminDensity:'행정면적 1㎢당 카페 수',brandShare:'48개 브랜드 비중',commercialDensity:'실제 상업지역 카페 밀도(서울)',commercialCount:'상업지역 내 카페 수(서울)'};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=n=>(n===null||n===undefined||!Number.isFinite(n))?'자료 없음':fmt.format(n);
+const cityRows=()=>data.filter(d=>$('cityFilter').value==='전체'||d.city===$('cityFilter').value);
+const zoneDen=d=>(d.city==='서울'&&d.commercial_cafes!==null&&d.commercial_km2>0)?d.commercial_cafes/d.commercial_km2:null;
+function value(d){
+ switch($('metricSelect').value){
+ case 'adminDensity':return d.admin_km2>0?d.cafe_count/d.admin_km2:null;
+ case 'brandShare':return d.cafe_count>0?100*d.brand_count/d.cafe_count:null;
+ case 'commercialDensity':return zoneDen(d);
+ case 'commercialCount':return d.city==='서울'?d.commercial_cafes:null;
+ default:return d.cafe_count;
+ }
 }
-function num(n){return n==null||!Number.isFinite(n)?'자료 없음':formatter.format(n);}
-function color(n,max){if(n==null)return '#b6c6cc';const v=n/Math.max(max,1);return v<.2?'#d0e7de':v<.4?'#91cdbb':v<.6?'#f1d18e':v<.8?'#eca06e':'#d85448';}
-function detail(d){return `<div class="detail"><b>${escapeHtml(d.area)}</b> <span style="color:#71828e;font-size:11px">${escapeHtml(d.city)}</span><hr style="border:0;border-top:1px solid #e7edf0">카페 점포 수: <b>${num(d.cafe_count)}개</b><br>인구 1만 명당: ${num(d.population>0?d.cafe_count*10000/d.population:null)}개<br>상업지역 1km²당: ${num(d.commercial_km2>0?d.cafe_count/d.commercial_km2:null)}개</div>`;}
-function rows(){return data.filter(d=>$('cityFilter').value==='전체'||d.city===$('cityFilter').value);}
-function status(msg,isError=false){$('status').textContent=msg;$('status').classList.toggle('error',isError);}
-function mapMessage(title,desc){$('mapStatus').classList.remove('hidden');$('mapStatusTitle').textContent=title;$('mapStatusText').textContent=desc;}
-function openDetail(d){
-  if(!map || !popupOverlay) return;
-  popupElement.innerHTML='<button type="button" class="ol-popup-close" aria-label="닫기">×</button>'+detail(d);
-  popupElement.querySelector('.ol-popup-close').onclick=()=>popupOverlay.setPosition(undefined);
-  popupOverlay.setPosition(ol.proj.fromLonLat([d.lng,d.lat]));
+function unit(){return $('metricSelect').value==='brandShare'?'%':(['adminDensity','commercialDensity'].includes($('metricSelect').value)?'개/㎢':'개');}
+function fillColor(v,max){if(v===null)return '#b5c4cd';let t=v/Math.max(0.01,max);return t<.2?'#d0e7de':t<.4?'#91cdbb':t<.6?'#f1d18e':t<.8?'#eca06e':'#d85448';}
+function status(msg,error=false){$('status').textContent=msg;$('status').classList.toggle('error',error);}
+function mapMsg(title,msg){$('mapStatus').classList.remove('hidden');$('mapStatusTitle').textContent=title;$('mapStatusText').textContent=msg;}
+function csvRows(src){
+ const out=[],rows=src.replace(/^\uFEFF/,'').split(/\r?\n/).filter(Boolean);
+ if(!rows.length)return out;
+ const cols=rows.shift().split(',');
+ for(const line of rows){const a=line.split(',');const d={};cols.forEach((key,i)=>d[key]=a[i]??'');out.push(d);}
+ return out;
 }
-function clearMap(){
-  if(popupOverlay) popupOverlay.setPosition(undefined);
-  if(pointsLayer) pointsLayer.getSource().clear();
-  if(polygonsLayer) polygonsLayer.getSource().clear();
+const numeric=s=>(s===''||s==null?null:Number(s));
+async function loadRealData(){
+ try{
+  const response=await fetch('./data/areas.csv',{cache:'no-cache'});
+  if(!response.ok)throw new Error('data/areas.csv HTTP '+response.status);
+  const text=await response.text();
+  const rows=csvRows(text);
+  data=rows.map(r=>({area:r.area,city:r.city,lat:numeric(r.lat),lng:numeric(r.lng),cafe_count:numeric(r.cafe_count),brand_count:numeric(r.brand_count),admin_km2:numeric(r.admin_km2),commercial_km2:numeric(r.commercial_km2),commercial_cafes:numeric(r.commercial_cafes),commercial_brands:numeric(r.commercial_brands)}));
+  if(data.length!==56||data.some(d=>!d.area||!Number.isFinite(d.lng)||!Number.isFinite(d.lat)||!Number.isFinite(d.cafe_count)))throw new Error('56개 지역 데이터 형식 확인 필요');
+  if(data.reduce((s,d)=>s+d.cafe_count,0)!==49787)throw new Error('카페 수 합계 검증 실패');
+  $('dataNotice').classList.add('dataok');
+  $('dataNotice').innerHTML='<b>실제 데이터 적용 완료</b> · 2026년 6월 상가정보 I21201. 서울 25구 / 경기 31시군, 총 49,787개 카페.';
+  render();status('지역별 실제 카페 통계 56개 지역 로딩 완료.');
+ }catch(e){$('dataNotice').innerHTML='<b>실제 데이터 불러오기 실패</b> · 데이터 폴더 전체를 올렸는지 확인하세요.';status('데이터 오류: '+e.message+' · GitHub에 data/areas.csv가 있는지 확인하세요.',true);}
 }
-function paintGeo(shown,max){
-  if(!geoFeatures || !polygonsLayer) return;
-  const lookup=new Map(shown.map(d=>[d.area,d]));
-  const collection={type:'FeatureCollection',features:geoFeatures};
-  let features;
-  try {
-    features=new ol.format.GeoJSON().readFeatures(collection,{dataProjection:'EPSG:4326',featureProjection:'EPSG:3857'});
-  }catch(e){status('GeoJSON 변환 오류: '+e.message,true);return;}
-  features.forEach(f=>{
-    const name=f.get('SIG_KOR_NM')||f.get('area')||f.get('name');
-    const d=lookup.get(name);
-    if(!d)return;
-    f.set('cafe_data',d);
-    const v=metric(d);
-    f.setStyle(new ol.style.Style({
-      fill:new ol.style.Fill({color:hexRGBA(color(v,max),.33)}),
-      stroke:new ol.style.Stroke({color:'#5e7d8c',width:1.2})
-    }));
-    polygonsLayer.getSource().addFeature(f);
-  });
+function detail(d){
+ const inZone=d.city==='서울'&&d.commercial_cafes!==null;
+ return `<div class="detail"><b>${esc(d.area)}</b> <span style="color:#71828e;font-size:11px">${esc(d.city)}</span><hr style="border:0;border-top:1px solid #e7edf0">카페 점포: <b>${num(d.cafe_count)}개</b><br>식별 48개 브랜드: ${num(d.brand_count)}개 (${num(d.brand_count*100/d.cafe_count)}%)<br>행정면적 카페 밀도: ${num(d.admin_km2>0?d.cafe_count/d.admin_km2:null)}개/㎢<br>상업지역 내 카페: ${inZone?num(d.commercial_cafes)+'개':'미검증'}<br>실제 상업지역 밀도: ${inZone?num(zoneDen(d))+'개/㎢':'미검증'}<div style="font-size:10px;color:#7b8b99;margin-top:4px">2026.06 점포 · 2025.12 상업면적</div></div>`;
 }
-function hexRGBA(hex,alpha){
-  const h=hex.replace('#','');
-  return `rgba(${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)},${alpha})`;
-}
-function drawMap(shown,max){
-  if(!map||!connected)return;
-  clearMap();
-  paintGeo(shown,max);
-  shown.forEach(d=>{
-    const v=metric(d);
-    const radius=v==null?13:Math.max(15,Math.min(32,13+19*Math.sqrt(v/Math.max(1,max))));
-    const text=v==null?'–':num(v);
-    const feature=new ol.Feature({geometry:new ol.geom.Point(ol.proj.fromLonLat([d.lng,d.lat]))});
-    feature.set('cafe_data',d);
-    feature.setStyle(new ol.style.Style({
-      image:new ol.style.Circle({
-        radius, fill:new ol.style.Fill({color:color(v,max)}),
-        stroke:new ol.style.Stroke({color:'#ffffff',width:2.2})
-      }),
-      text:new ol.style.Text({
-        text, font:'bold 11px sans-serif',
-        fill:new ol.style.Fill({color:'#1d3547'}),
-        stroke:new ol.style.Stroke({color:'rgba(255,255,255,.85)',width:2})
-      })
-    }));
-    pointsLayer.getSource().addFeature(feature);
-  });
-  if(shown.length){
-    const positions=shown.map(d=>ol.proj.fromLonLat([d.lng,d.lat]));
-    if(shown.length===1){map.getView().animate({center:positions[0],zoom:11,duration:350});}
-    else map.getView().fit(ol.extent.boundingExtent(positions),{
-      size:map.getSize(),padding:[65,65,65,65],maxZoom:12,duration:350
-    });
-  }
+function storeDetail(p){return `<div class="detail"><b>${esc(p[2])}</b><hr style="border:0;border-top:1px solid #e7edf0">지역: ${esc(p[4])}<br>브랜드: ${p[3]?esc(p[3]):'미식별'}<br>상업지역 내 위치: ${p[4]&&cityFromArea(p[4])==='서울'?(p[5]?'예':'아니오'):'경기 미검증'}<div style="font-size:10px;color:#7b8b99;margin-top:5px">2026.06 상가정보 수록 점포</div></div>`;}
+function cityFromArea(area){return data.find(d=>d.area===area)?.city;}
+function popup(html,coordinates){if(!map||!popupOverlay)return;popupElement.innerHTML='<button type="button" class="ol-popup-close" aria-label="닫기">×</button>'+html;popupElement.querySelector('button').onclick=()=>popupOverlay.setPosition(undefined);popupOverlay.setPosition(coordinates);}
+function showArea(d){popup(detail(d),ol.proj.fromLonLat([d.lng,d.lat]));}
+function drawAreas(){
+ if(!map||!pointsLayer)return;
+ const shown=cityRows();const vals=shown.map(value).filter(v=>v!==null&&Number.isFinite(v));const max=Math.max(1,...vals);
+ const feats=[];
+ for(const d of shown){
+  const v=value(d),rad=v===null?13:Math.max(13,Math.min(28,12+16*Math.sqrt(v/max)));
+  const f=new ol.Feature({geometry:new ol.geom.Point(ol.proj.fromLonLat([d.lng,d.lat]))});
+  f.set('area_data',d);
+  f.setStyle(new ol.style.Style({
+   image:new ol.style.Circle({radius:rad,fill:new ol.style.Fill({color:fillColor(v,max)}),stroke:new ol.style.Stroke({color:'#fff',width:2.2})}),
+   text:new ol.style.Text({text:v===null?'—':num(v),font:'bold 10px sans-serif',fill:new ol.style.Fill({color:'#17394b'}),stroke:new ol.style.Stroke({color:'rgba(255,255,255,.9)',width:2})})
+  }));feats.push(f);
+ }
+ pointsLayer.getSource().clear();pointsLayer.getSource().addFeatures(feats);
 }
 function render(){
-  const shown=rows();
-  const vals=shown.map(metric).filter(x=>x!=null&&Number.isFinite(x));
-  const max=Math.max(1,...vals);
-  const total=shown.reduce((n,d)=>n+d.cafe_count,0);
-  const population=shown.reduce((n,d)=>n+(d.population>0?d.population:0),0);
-  const comparableCafes=shown.reduce((n,d)=>n+(d.population>0?d.cafe_count:0),0);
-  $('totalCafes').textContent=num(total);
-  $('totalPer10k').textContent=population>0?num(comparableCafes*10000/population):'–';
-  $('areaCount').textContent=`${shown.length}개 지역`;
-  $('legendTitle').textContent=metrics[$('metricSelect').value];
-  $('legendMax').textContent=vals.length?`${num(max)}개`:'자료 없음';
-  const results=$('results');results.replaceChildren();
-  [...shown].sort((a,b)=>(metric(b)??-1)-(metric(a)??-1)).forEach(d=>{
-    const btn=document.createElement('button');btn.className='result';btn.type='button';
-    const left=document.createElement('span');
-    left.innerHTML=`<span class="name">${escapeHtml(d.area)}</span><span class="region">${escapeHtml(d.city)}</span>`;
-    const right=document.createElement('span');right.className='value';right.textContent=num(metric(d))+(metric(d)==null?'':'개');
-    btn.append(left,right);btn.addEventListener('click',()=>{if(map){map.getView().animate({center:ol.proj.fromLonLat([d.lng,d.lat]),zoom:11,duration:350});openDetail(d);}else{status('먼저 브이월드 지도를 연결하세요.');}});
-    results.appendChild(btn);
-  });
-  if(!shown.length)results.textContent='선택한 지역의 데이터가 없습니다.';
-  drawMap(shown,max);
+ const shown=cityRows(),total=shown.reduce((a,d)=>a+d.cafe_count,0),brands=shown.reduce((a,d)=>a+d.brand_count,0);
+ const zoned=shown.filter(d=>d.city==='서울'&&d.commercial_cafes!==null);
+ const zoneTotal=zoned.reduce((a,d)=>a+d.commercial_cafes,0);
+ const zoneArea=zoned.reduce((a,d)=>a+d.commercial_km2,0);
+ $('totalCafes').textContent=data.length?num(total):'—';
+ $('totalBrands').textContent=data.length?num(brands):'—';
+ $('totalCommercial').textContent=zoned.length?num(zoneTotal):'—';
+ $('totalCommercialDensity').textContent=zoneArea>0?num(zoneTotal/zoneArea):'—';
+ $('areaCount').textContent=`${shown.length}개 지역`;
+ $('legendTitle').textContent=metricLabels[$('metricSelect').value];
+ const vals=shown.map(value).filter(v=>v!==null&&Number.isFinite(v));
+ $('legendMax').textContent=vals.length?num(Math.max(...vals))+unit():'검증 자료 없음';
+ const results=$('results');results.replaceChildren();
+ for(const d of [...shown].sort((a,b)=>(value(b)??-1)-(value(a)??-1))){
+  const v=value(d);const btn=document.createElement('button');btn.type='button';btn.className='result'+(v===null?' missing':'');
+  const left=document.createElement('span');left.innerHTML=`<span class="name">${esc(d.area)}</span><span class="region">${esc(d.city)}</span>`;
+  const right=document.createElement('span');right.className='value';right.textContent=v===null?'미검증':num(v)+unit();
+  btn.append(left,right);btn.onclick=()=>{if(map){map.getView().animate({center:ol.proj.fromLonLat([d.lng,d.lat]),zoom:12,duration:350});showArea(d);}else status('브이월드 지도를 먼저 연결하세요.');};
+  results.appendChild(btn);
+ }
+ drawAreas();schedulePoints();
 }
+function moveToCity(){if(!map)return;const shown=cityRows();if(!shown.length)return;const coords=shown.map(d=>ol.proj.fromLonLat([d.lng,d.lat]));map.getView().fit(ol.extent.boundingExtent(coords),{size:map.getSize(),padding:[58,58,58,58],maxZoom:11,duration:400});}
 function connect(){
-  if(connecting)return;
-  const key=($('apiKey').value.trim()||VWORLD_API_KEY).trim();
-  if(!key){status('브이월드 API 인증키를 입력하세요.',true);return;}
-  if(!window.ol){
-    mapMessage('지도 라이브러리 로드 실패','OpenLayers JavaScript 라이브러리를 불러오지 못했습니다. 인터넷 및 CDN 접근을 확인하세요.');
-    status('OpenLayers CDN 접속에 실패했습니다. F12 → Console/Network에서 확인하세요.',true);return;
-  }
-  if(location.protocol==='file:'){
-    mapMessage('로컬 웹 서버에서 실행하세요','file://로 연 HTML은 인증키에 등록된 도메인과 일치하지 않을 수 있습니다. VS Code Live Server 또는 http://localhost:8080에서 실행하세요.');
-    status('file:// 로 직접 실행했습니다. 브이월드에 등록된 http://localhost:8080에서 실행해 주세요.',true);return;
-  }
-  if(connected){
-    mapMessage('새 지도 연결 중','입력한 인증키로 배경지도를 다시 불러옵니다.');
-    map.setTarget(null);map=null;connected=false;
-  }
-  connecting=true;
-  $('connectBtn').disabled=true;$('connectBtn').textContent='지도 연결 중…';
-  mapMessage('브이월드 지도 요청 중','배경지도 타일 응답을 확인하고 있습니다.');
-  status('브이월드 WMTS 배경지도를 불러오는 중입니다.');
-  try{
-    const tileSource=new ol.source.XYZ({
-      url:`https://api.vworld.kr/req/wmts/1.0.0/${encodeURIComponent(key)}/Base/{z}/{y}/{x}.png`,
-      attributions:'© <a href="https://www.vworld.kr/" target="_blank" rel="noopener">브이월드</a>',
-      crossOrigin:null,
-      maxZoom:19
-    });
-    pointsLayer=new ol.layer.Vector({source:new ol.source.Vector(),zIndex:20});
-    polygonsLayer=new ol.layer.Vector({source:new ol.source.Vector(),zIndex:10});
-    popupElement=document.createElement('div');popupElement.className='ol-popup-custom';
-    $('map').appendChild(popupElement);
-    popupOverlay=new ol.Overlay({element:popupElement,autoPan:{animation:{duration:220}}});
-    map=new ol.Map({
-      target:'map',layers:[new ol.layer.Tile({source:tileSource}),polygonsLayer,pointsLayer],
-      view:new ol.View({center:ol.proj.fromLonLat([127.05,37.55]),zoom:9,minZoom:6,maxZoom:19}),
-      overlays:[popupOverlay]
-    });
-    map.on('singleclick',event=>{
-      const feature=map.forEachFeatureAtPixel(event.pixel,f=>f);
-      if(feature){const d=feature.get('cafe_data');if(d)openDetail(d);}
-      else popupOverlay.setPosition(undefined);
-    });
-    map.on('pointermove',event=>{
-      const f=map.forEachFeatureAtPixel(event.pixel,x=>x);
-      map.getTargetElement().style.cursor=f&&f.get('cafe_data')?'pointer':'';
-    });
-    let successes=0,failures=0,finished=false;
-    const finish=(ok,message)=>{
-      if(finished)return;finished=true;connecting=false;
-      $('connectBtn').disabled=false;$('connectBtn').textContent=ok?'지도 다시 연결':'다시 시도';
-      if(ok){$('mapStatus').classList.add('hidden');status(message);}
-      else{mapMessage('브이월드 타일을 불러오지 못했습니다',message);status(message,true);}
-    };
-    tileSource.on('tileloadend',()=>{successes++;if(successes===1)finish(true,'브이월드 배경지도 연결 성공. 카페 분석 데이터를 표시합니다.');});
-    tileSource.on('tileloaderror',()=>{failures++;if(!successes&&failures>=4)finish(false,'타일 요청이 거부되었습니다. 인증키 상태, 허용 URL 및 요청 제한을 확인하세요. F12 → Network에 403/404 오류가 있는지 확인할 수 있습니다.');});
-    connected=true;
-    render();
-    setTimeout(()=>{if(!finished)finish(false,'지도 응답을 확인하지 못했습니다. 브이월드 인증키, 등록 도메인, 인터넷/CDN 연결을 확인하세요.');},15000);
-  }catch(e){
-    connecting=false;connected=false;$('connectBtn').disabled=false;$('connectBtn').textContent='지도 다시 시도';
-    mapMessage('지도 생성 실패',e.message);status('지도 생성 오류: '+e.message,true);
-  }
+ if(connecting)return;
+ const key=($('apiKey').value.trim()||VWORLD_API_KEY).trim();
+ if(!key){mapMsg('브이월드 인증키가 필요합니다','index.html의 VWORLD_API_KEY에 현재 등록하신 브이월드 인증키를 넣으세요.');return;}
+ if(!window.ol){mapMsg('지도 라이브러리 오류','OpenLayers 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하세요.');return;}
+ connecting=true;mapMsg('브이월드 지도 연결 중','지도 이미지 서버에 접속하고 있습니다.');
+ try{
+  const tile=new ol.source.XYZ({url:`https://api.vworld.kr/req/wmts/1.0.0/${encodeURIComponent(key)}/Base/{z}/{y}/{x}.png`,attributions:'© 브이월드',maxZoom:19});
+  pointsLayer=new ol.layer.Vector({source:new ol.source.Vector(),zIndex:20});
+  zoneLayer=new ol.layer.Vector({source:new ol.source.Vector(),zIndex:5});
+  shopLayer=new ol.layer.Vector({source:new ol.source.Vector(),zIndex:30});
+  popupElement=document.createElement('div');popupElement.className='ol-popup-custom';$('map').appendChild(popupElement);
+  popupOverlay=new ol.Overlay({element:popupElement,autoPan:{animation:{duration:180}}});
+  map=new ol.Map({target:'map',layers:[new ol.layer.Tile({source:tile}),zoneLayer,pointsLayer,shopLayer],view:new ol.View({center:ol.proj.fromLonLat([127.05,37.55]),zoom:9,minZoom:6,maxZoom:19}),overlays:[popupOverlay]});
+  map.on('singleclick',e=>{const f=map.forEachFeatureAtPixel(e.pixel,f=>f);if(!f){popupOverlay.setPosition(undefined);return;}const p=f.get('shop_data');if(p)popup(storeDetail(p),f.getGeometry().getCoordinates());else{const d=f.get('area_data');if(d)showArea(d);}});
+  map.on('pointermove',e=>{const f=map.forEachFeatureAtPixel(e.pixel,x=>x);map.getTargetElement().style.cursor=f&&(f.get('shop_data')||f.get('area_data'))?'pointer':'';});
+  map.on('moveend',()=>schedulePoints());
+  let done=false,failed=0;
+  const finish=(ok,msg)=>{if(done)return;done=true;connecting=false;if(ok){$('mapStatus').classList.add('hidden');$('setup').hidden=true;status(msg);}else{mapMsg('지도 연결 실패',msg);status(msg,true);}};
+  tile.on('tileloadend',()=>finish(true,'브이월드 지도 및 실제 데이터 연결 완료'));
+  tile.on('tileloaderror',()=>{failed++;if(failed>=4)finish(false,'브이월드 타일 요청 거부. API 키 서비스 URL과 사용 상태를 확인하세요.');});
+  connected=true;render();setTimeout(()=>{if(!done)finish(false,'지도 응답이 없습니다. 인터넷/인증키/등록 URL을 확인하세요.');},15000);
+ }catch(e){connecting=false;status('지도 생성 오류: '+e.message,true);mapMsg('지도 연결 오류',e.message);}
 }
-function parseCSV(text){
-  const rs=[];let row=[],cell='',quote=false;
-  text=text.replace(/^\uFEFF/,'');
-  for(let i=0;i<text.length;i++){
-    const c=text[i];
-    if(c==='"'){if(quote&&text[i+1]==='"'){cell+='"';i++;}else quote=!quote;}
-    else if(c===','&&!quote){row.push(cell);cell='';}
-    else if((c==='\r'||c==='\n')&&!quote){if(c==='\r'&&text[i+1]==='\n')i++;row.push(cell);if(row.some(v=>v.trim()))rs.push(row);row=[];cell='';}
-    else cell+=c;
-  }
-  row.push(cell);if(row.some(v=>v.trim()))rs.push(row);
-  if(!rs.length)return [];
-  const head=rs.shift().map(c=>c.trim().toLowerCase());
-  return rs.map(values=>Object.fromEntries(head.map((h,i)=>[h,(values[i]||'').trim()])));
+let pointsTimer=null;
+function schedulePoints(){clearTimeout(pointsTimer);pointsTimer=setTimeout(updatePoints,220);}
+async function loadPoints(city){
+ if(pointCache[city])return pointCache[city];
+ const url=city==='서울'?'./data/points_seoul.json':'./data/points_gyeonggi.json';
+ const r=await fetch(url);if(!r.ok)throw new Error(url+' HTTP '+r.status);
+ const entries=await r.json();pointCache[city]=entries;return entries;
 }
-$('csvInput').addEventListener('change',async e=>{
-  const file=e.target.files?.[0];if(!file)return;
+async function updatePoints(){
+ if(!map||!shopLayer)return;
+ const src=shopLayer.getSource();const seq=++shopRefreshSeq;
+ src.clear();
+ if(!$('showShops').checked){$('layerHint').textContent='지역별 원을 클릭하면 통계가 보입니다.';return;}
+ if(map.getView().getZoom()<12){$('layerHint').textContent='개별 카페를 보려면 지도를 12레벨 이상 확대하세요.';return;}
+ $('layerHint').textContent='화면에 보이는 카페 위치를 불러오는 중입니다.';
+ const cities=$('cityFilter').value==='전체'?['서울','경기']:[$('cityFilter').value];
+ try{
+  const all=(await Promise.all(cities.map(loadPoints))).flat();if(seq!==shopRefreshSeq)return;
+  const extent=map.getView().calculateExtent(map.getSize());
+  const bounds=ol.proj.transformExtent(extent,'EPSG:3857','EPSG:4326');
+  const selected=new Set(cityRows().map(x=>x.area));
+  const within=all.filter(p=>selected.has(p[4])&&p[0]>=bounds[0]&&p[0]<=bounds[2]&&p[1]>=bounds[1]&&p[1]<=bounds[3]);
+  const limit=3000;
+  const selectedPoints=within.slice(0,limit);
+  const feats=selectedPoints.map(p=>{
+    const f=new ol.Feature({geometry:new ol.geom.Point(ol.proj.fromLonLat([p[0],p[1]]))});f.set('shop_data',p);
+    f.setStyle(new ol.style.Style({image:new ol.style.Circle({radius:4.2,fill:new ol.style.Fill({color:p[5]?'#c55a3c':'#178a91'}),stroke:new ol.style.Stroke({color:'#fff',width:1})})}));return f;
+  });src.addFeatures(feats);
+  $('layerHint').textContent=`현재 화면 카페 ${num(within.length)}개 · 표시 ${num(selectedPoints.length)}개${within.length>limit?' (과밀 지역은 최대 3,000개까지만 표시)':''}. 청록색: 일반/미분류, 주황색: 서울 상업지역 내.`;
+ }catch(e){if(seq===shopRefreshSeq)status('개별 점포 데이터 오류: '+e.message,true);}
+}
+let zonesLoaded=false;
+async function updateZones(){
+ if(!map||!zoneLayer)return;
+ if(!$('showCommercial').checked){zoneLayer.setVisible(false);return;}
+ if(!zonesLoaded){
   try{
-    const raw=parseCSV(await file.text());
-    const required=['area','city','lat','lng','cafe_count'];
-    if(!raw.length||required.some(k=>!(k in raw[0])))throw new Error('CSV 열을 확인하세요: '+required.join(', '));
-    const convert=raw.map(d=>({area:d.area,city:d.city==='서울특별시'?'서울':d.city==='경기도'?'경기':d.city,lat:Number(d.lat),lng:Number(d.lng),cafe_count:Number(d.cafe_count),population:d.population?Number(d.population):null,commercial_km2:d.commercial_km2?Number(d.commercial_km2):null})).filter(d=>d.area&&['서울','경기'].includes(d.city)&&Number.isFinite(d.lat)&&d.lat>=33&&d.lat<=40&&Number.isFinite(d.lng)&&d.lng>=124&&d.lng<=132&&Number.isFinite(d.cafe_count)&&d.cafe_count>=0);
-    if(!convert.length)throw new Error('유효한 서울·경기 지역 데이터가 없습니다.');
-    data=convert;loadedRealCsv=true;$('cityFilter').value='전체';
-    $('dataNotice').innerHTML='<b>CSV에서 가져온 데이터</b>입니다. 통계 출처와 기준 시점은 원본에서 확인하세요.';
-    $('mapNote').textContent='CSV 데이터 · 출처/기준 시점 확인 필요';
-    render();status(`${file.name}: ${convert.length}개 행을 읽었습니다.`);
-  }catch(err){status('CSV 오류: '+err.message,true);}
-  e.target.value='';
-});
-$('geoInput').addEventListener('change',async e=>{
-  const file=e.target.files?.[0];if(!file)return;
-  try{
-    const json=JSON.parse(await file.text());
-    const features=json.type==='FeatureCollection'?json.features:json.type==='Feature'?[json]:null;
-    if(!features||!features.length)throw new Error('FeatureCollection/Feature GeoJSON 파일이 아닙니다.');
-    if(features.length>1000)throw new Error('행정구역 1000개 이하의 GeoJSON을 사용해 주세요.');
-    let p=null;
-    for(const f of features){const g=f.geometry;if(!g)continue;const outer=g.type==='Polygon'?g.coordinates?.[0]:g.type==='MultiPolygon'?g.coordinates?.[0]?.[0]:null;if(outer?.length){p=outer[0];break;}}
-    if(!p||!Array.isArray(p)||p.length<2||p[0]<124||p[0]>132||p[1]<33||p[1]>40)throw new Error('EPSG:4326 좌표(경도,위도) 파일인지 확인해 주세요.');
-    geoFeatures=features;render();status(`${file.name}: ${features.length}개 행정구역 경계를 읽었습니다.`);
-  }catch(err){status('GeoJSON 오류: '+err.message,true);}
-  e.target.value='';
-});
-$('sampleCsv').addEventListener('click',()=>{
-  const cols=['area','city','lat','lng','cafe_count','population','commercial_km2'];
-  const csv=[cols.join(','),...sampleData.map(d=>cols.map(k=>d[k]).join(','))].join('\r\n');
-  const u=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-  const a=document.createElement('a');a.href=u;a.download='cafe_sample_FAKE_data.csv';a.click();setTimeout(()=>URL.revokeObjectURL(u),2000);
-});
+    const r=await fetch('./data/seoul_commercial.geojson');if(!r.ok)throw new Error('상업지역 GeoJSON HTTP '+r.status);
+    const geo=await r.json();
+    const feats=new ol.format.GeoJSON().readFeatures(geo,{dataProjection:'EPSG:4326',featureProjection:'EPSG:3857'});
+    feats.forEach(f=>f.setStyle(new ol.style.Style({fill:new ol.style.Fill({color:'rgba(240,157,52,.17)'}),stroke:new ol.style.Stroke({color:'rgba(180,103,24,.85)',width:1.2})})));
+    zoneLayer.getSource().addFeatures(feats);zonesLoaded=true;
+  }catch(e){status('상업지역 레이어 오류: '+e.message,true);return;}
+ }
+ zoneLayer.setVisible(true);
+}
 $('connectBtn').addEventListener('click',connect);
 $('apiKey').addEventListener('keydown',e=>{if(e.key==='Enter')connect();});
-$('cityFilter').addEventListener('change',render);
+$('cityFilter').addEventListener('change',()=>{render();moveToCity();});
 $('metricSelect').addEventListener('change',render);
-if(VWORLD_API_KEY)$('apiKey').value=VWORLD_API_KEY;
-if(location.protocol==='file:')status('로컬 웹 서버에서 실행하세요.',true);
-
-render();
-
-// 웹사이트가 열리면 자동으로 브이월드 지도 연결
-if (VWORLD_API_KEY) {
-    connect();
-}
-</script>
-</body>
-</html>
+$('showShops').addEventListener('change',()=>schedulePoints());
+$('showCommercial').addEventListener('change',()=>updateZones());
+if(VWORLD_API_KEY){$('apiKey').value=VWORLD_API_KEY;}
+if(location.protocol==='file:'){status('파일을 직접 열면 CSV 불러오기가 제한됩니다. GitHub Pages나 Live Server에서 실행하세요.',true);}
+loadRealData();
+if(VWORLD_API_KEY)connect();else mapMsg('인증키 설정 후 지도 연결','GitHub 저장소의 index.html에서 VWORLD_API_KEY를 설정하면 접속 시 자동으로 지도가 열립니다.');
+</script></body></html>
