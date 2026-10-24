@@ -27,7 +27,7 @@
 
 ## 🔗 서비스 바로가기
 
-**[서울·경기 카페 상권 분석 지도 열기](https://holymolyquokamoly.github.io/cafe-map/)**
+[서울·경기 카페 상권 분석 지도 열기] https://holymolyquokamoly.github.io/cafe-map/
 
 ---
 
