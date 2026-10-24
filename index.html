@@ -344,7 +344,7 @@ function connect(){
   shopLayer=new ol.layer.Vector({source:new ol.source.Vector(),zIndex:30});
   popupElement=document.createElement('div');popupElement.className='ol-popup-custom';$('map').appendChild(popupElement);
   popupOverlay=new ol.Overlay({element:popupElement,autoPan:{animation:{duration:180}}});
-  map=new ol.Map({target:'map',controls:ol.control.defaults({zoom:false}),layers:[new ol.layer.Tile({source:tile}),zoneLayer,pointsLayer,shopLayer],view:new ol.View({center:ol.proj.fromLonLat([127.05,37.55]),zoom:9,minZoom:6,maxZoom:19}),overlays:[popupOverlay]});
+  map=new ol.Map({target:'map',controls: [],layers:[new ol.layer.Tile({source:tile}),zoneLayer,pointsLayer,shopLayer],view:new ol.View({center:ol.proj.fromLonLat([127.05,37.55]),zoom:9,minZoom:6,maxZoom:19}),overlays:[popupOverlay]});
   $('zoomIn').disabled=false;
   $('zoomOut').disabled=false;
   updateBoundaryVisibility();
